@@ -1,24 +1,37 @@
 # AI-IP.list —— AI 服务风控严名单（IP 部分）
-# 格式：Clash / mihomo classical（IP-CIDR / IP-CIDR6 / IP-ASN）
+# 格式：Clash / mihomo classical（IP-CIDR / IP-CIDR6）
 # 生成：2026-10-27
 #
-# 用法一（subconverter / Clash-LIAN.ini）：ruleset=AI,<本文件URL>
-# 用法二（mihomo rule-providers）：behavior: ipcidr
-# 用法三（asailor 中转）：type=4
+# 用法（mihomo rule-providers）：behavior: classical + format: text
+#   rule-providers:
+#     AI-IP:
+#       type: http
+#       behavior: classical
+#       format: text
+#       url: <本文件URL>
+#       path: ./rule_provider/ai_ip.yaml
+#       interval: 86400
+#   rules:
+#     - RULE-SET,AI-IP,AI,no-resolve
 #
-# 配套域名规则见 AI.list。IP 规则必须带 no-resolve，否则会触发额外 DNS 解析。
+# 【重要】本文件不能写 IP-ASN。实测 mihomo：rule-provider 内只要出现一行 IP-ASN，
+#   整个 provider 报 "ASN invalid, remove and download" 并归零（ruleCount=0）。
+#   IP-ASN 只能写在内联 rules 里，且运行目录必须有 ASN.mmdb。
+#   对应的 ASN 规则见文件末尾注释，复制到 OpenClash「自定义规则」里用。
+#
+# 配套域名规则见 AI.list。
 
 # ===== OpenAI / ChatGPT / Sora =====
 IP-CIDR,199.47.142.0/23,no-resolve
 IP-CIDR,24.199.123.28/32,no-resolve
 IP-CIDR,64.23.132.171/32,no-resolve
 IP-CIDR6,2604:f20::/32,no-resolve
-IP-ASN,401518,no-resolve
 
 # ===== Anthropic / Claude =====
 IP-CIDR,160.79.104.0/21,no-resolve
 IP-CIDR6,2607:6bc0::/32,no-resolve
-IP-ASN,399358,no-resolve
 
-# ===== Microsoft Copilot / GitHub Copilot =====
-IP-ASN,14061,no-resolve
+# ===== 以下 ASN 规则不能放本文件，需内联到 rules =====
+# IP-ASN,401518,AI,no-resolve   # OpenAI
+# IP-ASN,399358,AI,no-resolve   # Anthropic
+# IP-ASN,14061,AI,no-resolve    # DigitalOcean（Copilot 中转）
