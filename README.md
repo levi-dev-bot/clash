@@ -1,83 +1,69 @@
-# clash
+# clash — OpenClash / mihomo 规则与策略组
 
-Clash / mihomo 规则集。源自 [lee-win/clash](https://github.com/lee-win/clash)，已重构。
+源自 [lee-win/clash](https://github.com/lee-win/clash)，已重构。**OpenWrt 上的 OpenClash 直接从这里拉规则。**
 
-## 文件说明
+## 文件
 
 | 文件 | 用途 |
-| --- | --- |
-| `Clash-LIAN.ini` | OpenClash / subconverter 规则模板（策略组 + ruleset 定义） |
-| `AI.list` | AI 服务风控严名单 · 域名部分（171 条） |
-| `AI-IP.list` | AI 服务风控严名单 · IP 部分（9 条，IP-CIDR / IP-ASN） |
-| `Airport.list` | 机场域名（订阅/官网走代理） |
-| `Proxy.list` | 国外代理补充 + 国外 DNS |
-| `Direct.list` | 国内直连补充 |
-| `Download.list` | 国内下载直连 |
-| `relay.list` | 中转域名 |
-| `Clash-Dev.txt` | OpenClash 开发者选项自定义脚本 |
+|---|---|
+| `AI.list` | AI 风控严名单（域名），171 条。classical 文本格式 |
+| `AI-IP.list` | AI 风控 IP 段，6 条。classical 文本格式，**不含 IP-ASN**（见下方坑） |
+| `Clash-LIAN.ini` | subconverter 模板，含 18 个策略组 |
+| `Airport.list` | 机场域名（走 Airport 组，避免机场面板流量走代理） |
+| `Proxy.list` | 需代理的零散域名 |
+| `Direct.list` | 直连名单 |
+| `Download.list` / `relay.list` | 下载 / 中转 |
 
-## AI.list 数据源
+## 规则格式
 
-融合版，180 条，源自：
-
-- [VPSDance/ai-proxy-rules](https://github.com/VPSDance/ai-proxy-rules)（每日自动同步）
-- [Repcz/Tool](https://github.com/Repcz/Tool)（补充）
-
-覆盖：OpenAI / ChatGPT / Sora、Anthropic / Claude、Google Gemini / AI Studio、Meta AI / Muse / Llama、xAI / Grok、Microsoft Copilot / GitHub Copilot、Perplexity、Poe。
-
-**含风控关键域名**（一般规则集容易漏）：
-
-- `arkoselabs.com` —— 人机验证
-- `statsig.com` / `featuregates.org` / `launchdarkly.com` / `growthbook.io` —— 特征开关（指纹）
-- `datadog` / `sentry` / `sift` —— 反欺诈上报
-- `auth0.com` —— 登录
-- `stripe.com` —— 支付
-- `livekit.cloud` —— 语音
-
-对应 QX 三段式版本：[quantumultx-rules](https://github.com/levi-dev-bot/quantumultx-rules)
-
-## 用法
-
-### OpenClash
-
-订阅转换时把模板地址指向本仓库：
-
-```
-https://raw.githubusercontent.com/levi-dev-bot/clash/refs/heads/main/Clash-LIAN.ini
-```
-
-### mihomo rule-providers
+`AI.list` 和 `AI-IP.list` 是 **classical 纯文本**，不是 YAML payload。mihomo 和 subconverter 都能直接吃：
 
 ```yaml
 rule-providers:
   AI-Domain:
     type: http
-    behavior: domain
+    behavior: classical
+    format: text          # ← 必须写，否则按 YAML 解析会失败
     url: https://raw.githubusercontent.com/levi-dev-bot/clash/refs/heads/main/AI.list
-    path: ./providers/ai_domain.yaml
+    path: ./rule_provider/ai_domain.yaml
     interval: 86400
   AI-IP:
     type: http
-    behavior: ipcidr
+    behavior: classical
+    format: text
     url: https://raw.githubusercontent.com/levi-dev-bot/clash/refs/heads/main/AI-IP.list
-    path: ./providers/ai_ip.yaml
+    path: ./rule_provider/ai_ip.yaml
     interval: 86400
-
 rules:
   - RULE-SET,AI-Domain,AI
   - RULE-SET,AI-IP,AI,no-resolve
 ```
 
-## 相对原版的改动
+subconverter 用 `ruleset=AI,<URL>` 即可，无需转换。
 
-1. **AI 规则**：从 26 条扩到 180 条，补齐风控域名和 Meta/xAI/Perplexity/Poe
-2. **IP 规则拆文件**：mihomo 一个 rule-provider 只能有一种 behavior，IP 类必须单独拆，否则加载报错
-3. **新增「美国-固定」组**：`fallback` + 3600s 探活，出口不按延迟漂移（`url-test` 会导致出口 IP 频繁跳变，是 AI 账号风控的负面信号）
-4. **AI 组默认选中「美国-固定」**：原版默认 `DIRECT`，AI 流量直连会暴露真实 IP
-5. **排除项**：美国节点里的 `V6`（IPv6 通道）、`专线` / `IPLC`（入口在国内福州 `222.79.111.x`，落地未知）不进 AI 组
+## 实测过的坑
 
-## 注意
+**① rule-provider 里不能有 IP-ASN**
+只要文件里出现一行 `IP-ASN,xxx`，整个 provider 报 `ASN invalid, remove and download` 并**归零**（ruleCount=0）。IP-ASN 必须内联在 `rules:` 里，且运行目录要有 `ASN.mmdb`。
 
-- 本仓库的 `AI.list` 不含策略名，策略在规则引用处指定
-- IP 规则必须带 `no-resolve`，否则触发额外 DNS 解析
-- `Clash-LIAN.ini` 里的节点名匹配依赖机场命名习惯；换机场需要核对正则
+**② subconverter 的 `custom_proxy_group` filter 里不能写 `\|`**
+`(美国0[1-9]|美国\|0[1-9])` 会让**整个 filter 失效**，组里只剩 `DIRECT`。改用 `[|]` 字符类也一样失败。要匹配含 `|` 的节点名（如 naiko 的 `美国|01`）只能拆成独立组。
+
+**③ `udp=false` 会静默过滤节点**
+订阅转换 URL 带 `udp=false` 时，hysteria2 / anytls 类节点被整体剔除。pokemon 的 `美国0X原生`（hysteria2）和 naiko 的 `美国|0X`（anytls）都会消失，只剩 trojan 的 V6 节点。
+
+**④ api.wcc.best 有强缓存**
+改完 ini 后转换器仍返回旧结果，等 5 分钟也不刷。给 `config` 参数加 `?t=<时间戳>` 才生效。
+
+## 策略组设计
+
+AI 组走 `美国-固定`（`fallback` + 3600s 探活），不用 `url-test`——`url-test` 按延迟重排会让出口 IP 漂移，这本身是风控负面信号。
+
+```
+AI → 美国-固定 → (fallback) 美国0X丨V6 / 美国0X原生
+```
+
+## 相关
+
+- 节点质量实测：`~/.hermes/scripts/ip_health_check.py`
+- 上游规则源：VPSDance/ai-proxy-rules、Repcz/Tool、blackmatrix7/ios_rule_script
