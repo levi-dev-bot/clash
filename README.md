@@ -67,3 +67,22 @@ AI → 美国-固定 → (fallback) 美国0X丨V6 / 美国0X原生
 
 - 节点质量实测：`~/.hermes/scripts/ip_health_check.py`
 - 上游规则源：VPSDance/ai-proxy-rules、Repcz/Tool、blackmatrix7/ios_rule_script
+
+## mihomo vs subconverter：filter 正则不通用
+
+| 场景 | 匹配 `美国|01` | 结果 |
+|---|---|---|
+| mihomo `proxy-groups[].filter` | `"(美国\\\\|0[1-9])"` (YAML 四个反斜杠) | ✅ |
+| subconverter `custom_proxy_group` | `(美国\|0[1-9])` | ❌ 整个 filter 归零 |
+| subconverter | `(美国[|]0[1-9])` | ❌ 同样归零 |
+
+mihomo 直连配置（`config/merged.yaml`）能混着写；subconverter 里必须把含 `|` 的节点单独建组。
+
+## OpenClash 的 jsdelivr 改写会拼错路径
+
+`github_address_mod = https://fastly.jsdelivr.net/` 时，OpenClash 把
+`raw.githubusercontent.com/用户/仓库/refs/heads/main/文件` 改写成
+`fastly.jsdelivr.net/gh/用户/仓库@refs/heads/main/文件` → **404**（正确是 `@main`）。
+
+首次启动 provider 可能拉取失败，第二次重启会回退直连 raw.githubusercontent.com 就好了。
+要根治就把 `github_address_mod` 设 `0`。
