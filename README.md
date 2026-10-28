@@ -1,31 +1,43 @@
-# clash — OpenClash / mihomo 规则与策略组
+# clash —— OpenClash / mihomo 规则与策略组
 
-源自 [lee-win/clash](https://github.com/lee-win/clash)，已重构。**OpenWrt 上的 OpenClash 直接从这里拉规则。**
+源自 [lee-win/clash](https://github.com/lee-win/clash),已重构。**OpenWrt 上的 OpenClash 直接从这里拉规则。**
+
+**模式说明:本仓库规则用于"国外白名单"侧——命中国外/AI 名单走出口,未命中的国内流量由 OpenClash 兜底 `MATCH,国内` 直连。** 手机的 QX 仓库(quantumultx-rules)方向相反,是"国内白名单"侧(命中国内名单直连,其余默认走出口),两侧补直连条目的机制不同,勿混用。
 
 ## 文件
 
 | 文件 | 用途 |
 |---|---|
-| `AI.list` | AI 风控严名单（域名），171 条。classical 文本格式 |
-| `AI-IP.list` | AI 风控 IP 段，6 条。classical 文本格式，**不含 IP-ASN**（见下方坑） |
-| `Clash-LIAN.ini` | subconverter 模板，含 18 个策略组 |
-| `Airport.list` | 机场域名（走 Airport 组，避免机场面板流量走代理） |
+| `AI.list` | AI 风控严名单(域名)。**每日自动生成**(ai-core 保底 + L1/L2 合并) |
+| `ai-core.list` | AI 名单手工核心层,保底用,增删条目改这里 |
+| `exclude-cn.list` | 国内 AI 服务商域名,生成时剔除 |
+| `Domestic-Extra.list` | 国内直连补充(山姆/比亚迪等 ChinaMax 漏项),OpenClash 插在兜底直连之前、所有国外名单之后 |
+| `AI-IP.list` | AI 风控 IP 段,6 条。classical 文本格式,**不含 IP-ASN**(见下方坑) |
+| `Clash-LIAN.ini` | subconverter 模板,含 18 个策略组 |
+| `Airport.list` | 机场域名(走 Airport 组,避免机场面板流量走代理) |
 | `Proxy.list` | 需代理的零散域名 |
 | `Direct.list` | 直连名单 |
 | `Download.list` / `relay.list` | 下载 / 中转 |
 
 ## 规则格式
 
-`AI.list` 和 `AI-IP.list` 是 **classical 纯文本**，不是 YAML payload。mihomo 和 subconverter 都能直接吃：
+`AI.list` / `ai-core.list` / `Domestic-Extra.list` 是 **classical 纯文本**,不是 YAML payload。mihomo 和 subconverter 都能直接吃:
 
 ```yaml
 rule-providers:
   AI-Domain:
     type: http
     behavior: classical
-    format: text          # ← 必须写，否则按 YAML 解析会失败
+    format: text          # ← 必须写,否则按 YAML 解析会失败
     url: https://raw.githubusercontent.com/levi-dev-bot/clash/refs/heads/main/AI.list
     path: ./rule_provider/ai_domain.yaml
+    interval: 86400
+  Domestic-Extra:
+    type: http
+    behavior: classical
+    format: text
+    url: https://raw.githubusercontent.com/levi-dev-bot/clash/refs/heads/main/Domestic-Extra.list
+    path: ./rule_provider/domestic_extra.yaml
     interval: 86400
   AI-IP:
     type: http
@@ -37,27 +49,41 @@ rule-providers:
 rules:
   - RULE-SET,AI-Domain,AI
   - RULE-SET,AI-IP,AI,no-resolve
+  # Domestic-Extra 必须插在兜底 MATCH,国内 之前、其余国外名单之后
+  - RULE-SET,Domestic-Extra,国内,no-resolve
 ```
 
-subconverter 用 `ruleset=AI,<URL>` 即可，无需转换。
+subconverter 用 `ruleset=AI,<URL>` 即可,无需转换。
+
+## 每日自动生成(AI.list)
+
+GitHub Actions 每天 04:00(北京时间)跑 `scripts/merge-ai.py`:
+
+1. `ai-core.list`(手工核心,保底,不过滤)→
+2. L1 VPSDance `rules/clash/global.yaml`(境外聚合版,已剔除国内文件)→
+3. L2 Repcz/Tool `mihomo/Rules/AI.list` 差集 →
+4. `exclude-cn.list` 命中/`.cn` 后缀一律剔除(只作用上游层)→
+5. 有变化才提交;L1 拉取失败保留旧文件。
+
+国内大名单(ChinaMax / MetaCubeX cn.mrs)不经过本仓库,由设备侧 rule-provider 直接订阅上游。
 
 ## 实测过的坑
 
 **① rule-provider 里不能有 IP-ASN**
-只要文件里出现一行 `IP-ASN,xxx`，整个 provider 报 `ASN invalid, remove and download` 并**归零**（ruleCount=0）。IP-ASN 必须内联在 `rules:` 里，且运行目录要有 `ASN.mmdb`。
+只要文件里出现一行 `IP-ASN,xxx`,整个 provider 报 `ASN invalid, remove and download` 并**归零**(ruleCount=0)。IP-ASN 必须内联在 `rules:` 里,且运行目录要有 `ASN.mmdb`。
 
 **② subconverter 的 `custom_proxy_group` filter 里不能写 `\|`**
-`(美国0[1-9]|美国\|0[1-9])` 会让**整个 filter 失效**，组里只剩 `DIRECT`。改用 `[|]` 字符类也一样失败。要匹配含 `|` 的节点名（如 naiko 的 `美国|01`）只能拆成独立组。
+`(美国0[1-9]|美国\|0[1-9])` 会让**整个 filter 失效**,组里只剩 `DIRECT`。改用 `[|]` 字符类也一样失败。要匹配含 `|` 的节点名(如 naiko 的 `美国|01`)只能拆成独立组。
 
 **③ `udp=false` 会静默过滤节点**
-订阅转换 URL 带 `udp=false` 时，hysteria2 / anytls 类节点被整体剔除。pokemon 的 `美国0X原生`（hysteria2）和 naiko 的 `美国|0X`（anytls）都会消失，只剩 trojan 的 V6 节点。
+订阅转换 URL 带 `udp=false` 时,hysteria2 / anytls 类节点被整体剔除。pokemon 的 `美国0X原生`(hysteria2)和 naiko 的 `美国|0X`(anytls)都会消失,只剩 trojan 的 V6 节点。
 
 **④ api.wcc.best 有强缓存**
-改完 ini 后转换器仍返回旧结果，等 5 分钟也不刷。给 `config` 参数加 `?t=<时间戳>` 才生效。
+改完 ini 后转换器仍返回旧结果,等 5 分钟也不刷。给 `config` 参数加 `?t=<时间戳>` 才生效。
 
 ## 策略组设计
 
-AI 组走 `美国-固定`（`fallback` + 3600s 探活），不用 `url-test`——`url-test` 按延迟重排会让出口 IP 漂移，这本身是风控负面信号。
+AI 组走 `美国-固定`(`fallback` + 3600s 探活),不用 `url-test`——`url-test` 按延迟重排会让出口 IP 漂移,这本身是风控负面信号。
 
 ```
 AI → 美国-固定 → (fallback) 美国0X丨V6 / 美国0X原生
@@ -65,10 +91,10 @@ AI → 美国-固定 → (fallback) 美国0X丨V6 / 美国0X原生
 
 ## 相关
 
-- 节点质量实测：`~/.hermes/scripts/ip_health_check.py`
-- 上游规则源：VPSDance/ai-proxy-rules、Repcz/Tool、blackmatrix7/ios_rule_script
+- 节点质量实测:`~/.hermes/scripts/ip_health_check.py`
+- 上游规则源:VPSDance/ai-proxy-rules、Repcz/Tool、blackmatrix7/ios_rule_script
 
-## mihomo vs subconverter：filter 正则不通用
+## mihomo vs subconverter:filter 正则不通用
 
 | 场景 | 匹配 `美国|01` | 结果 |
 |---|---|---|
@@ -76,13 +102,13 @@ AI → 美国-固定 → (fallback) 美国0X丨V6 / 美国0X原生
 | subconverter `custom_proxy_group` | `(美国\|0[1-9])` | ❌ 整个 filter 归零 |
 | subconverter | `(美国[|]0[1-9])` | ❌ 同样归零 |
 
-mihomo 直连配置（`config/merged.yaml`）能混着写；subconverter 里必须把含 `|` 的节点单独建组。
+mihomo 直连配置(`config/merged.yaml`)能混着写;subconverter 里必须把含 `|` 的节点单独建组。
 
 ## OpenClash 的 jsdelivr 改写会拼错路径
 
-`github_address_mod = https://fastly.jsdelivr.net/` 时，OpenClash 把
+`github_address_mod = https://fastly.jsdelivr.net/` 时,OpenClash 把
 `raw.githubusercontent.com/用户/仓库/refs/heads/main/文件` 改写成
-`fastly.jsdelivr.net/gh/用户/仓库@refs/heads/main/文件` → **404**（正确是 `@main`）。
+`fastly.jsdelivr.net/gh/用户/仓库@refs/heads/main/文件` → **404**(正确是 `@main`)。
 
-首次启动 provider 可能拉取失败，第二次重启会回退直连 raw.githubusercontent.com 就好了。
+首次启动 provider 可能拉取失败,第二次重启会回退直连 raw.githubusercontent.com 就好了。
 要根治就把 `github_address_mod` 设 `0`。

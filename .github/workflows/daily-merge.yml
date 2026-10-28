@@ -1,0 +1,40 @@
+name: 每日合并上游名单
+
+on:
+  schedule:
+    - cron: "0 20 * * *" # 北京时间每天 04:00
+  workflow_dispatch: # 支持手动触发(紧急补名单时用)
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rules-updater
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 生成 AI.list
+        run: python scripts/merge-ai.py
+
+      - name: 提交(有变化才提交)
+        run: |
+          git config user.name "rules-updater[bot]"
+          git config user.email "rules-updater[bot]@users.noreply.github.com"
+          git add AI.list
+          if git diff --cached --quiet; then
+            echo "无变化,跳过提交"
+          else
+            N=$(grep -c '^DOMAIN' AI.list || true)
+            git commit -m "auto: 每日合并上游 $(TZ=UTC-8 date +%F) AI.list ${N} 条"
+            git push
+          fi

@@ -1,0 +1,116 @@
+# 国内 AI 服务商域名排除清单
+# 用途: 生成 strict-ai.list / AI.list 时,凡命中本清单的域名一律剔除。
+# 原因: 上游库(VPSDance global / Repcz)偶尔把国内 AI 服务商混进境外聚合文件,
+#       这些服务从境外出口访问会变慢甚至不可用,必须走国内直连。
+# 维护: 发现新的国内 AI 域名漏网时直接往下面加一行;支持整行注释。
+
+# ===== 阿里(通义/百炼/DashScope) =====
+aliyun.com
+dashscope.aliyuncs.com
+bailian.console.aliyun.com
+qianwen.aliyun.com
+tongyi.aliyun.com
+# qwen.ai / qwenlm.ai 是海外研究站,保留不走本清单
+
+# ===== 百度 =====
+baidu.com
+baidubce.com
+ernie.baidu.com
+yiyan.baidu.com
+qianfan.baidubce.com
+
+# ===== 字节(豆包/扣子/Trae/火山) =====
+bytedance.com
+bytedance.net
+bytednsdoc.com
+zijieapi.com
+bytelemon.com
+bytedapm.com
+byteintlapi.com
+volcengine.com
+volces.com
+doubao.com
+coze.cn
+coze.com
+cozeapp.net
+cozebaas.cn
+cozebuild.com
+cozecdn.com
+cozedeploy.com
+cozefn.cn
+cozeide.cn
+cozesdk.com
+trae.cn
+trae.com.cn
+trae.ai
+trae.guru
+mchost.guru
+marscode.cn
+marscode.com
+marscode.com.cn
+
+# ===== 腾讯(混元/元宝) =====
+tencent.com
+tencentcloudapi.com
+tencent.cn
+hunyuan.tencent.com
+hunyuan.tencentcloudapi.com
+api.hunyuan.cloud.tencent.com
+yuanbao.tencent.com
+yuanqi.tencent.com
+
+# ===== 智谱 =====
+zhipuai.cn
+zhipucn.com
+bigmodel.cn
+chatglm.cn
+
+# ===== 月之暗面(Kimi) =====
+moonshot.cn
+moonshot.ai
+kimi.com
+
+# ===== DeepSeek =====
+deepseek.com
+deepseeksvc.com
+
+# ===== MiniMax =====
+minimax.io
+minimaxi.com
+
+# ===== 阶跃星辰 =====
+stepfun.com
+stepfun.ai
+
+# ===== 魔搭 ModelScope =====
+modelscope.cn
+modelscope.com
+
+# ===== 硅基流动 =====
+siliconflow.cn
+siliconflow.com
+
+# ===== 字节系编码工具(国内版) =====
+qoder.cn
+qoder.com.cn
+qoder.com
+qodercn-jb.oss-cn-hangzhou.aliyuncs.com
+
+# ===== 其他国内 AI =====
+ppio.cn
+ppio.com
+xiaomimimo.com
+xiaoaiassist.com
+miaibox.com
+hailuoai.com
+xingyeai.com
+yoma.cn
+doudou.com
+cici.com
+ciciai.com
+ciciaicdn.com
+mcprev.cn
+mcbaas.work
+mcdemo.show
+abtestvm-sg.bytedance.com
+api.minimaxi.com

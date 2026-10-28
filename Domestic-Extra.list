@@ -1,0 +1,33 @@
+# Domestic-Extra.list —— 国内直连补充名单(个人层)
+# 模式说明: OpenClash 是"国外白名单"侧——本名单插在国内大名单(oc-cn-domain)之前,
+#           命中 → 国内直连;用于补 ChinaMax / MetaCubeX 收录遗漏的国内站。
+# 用法(rule-providers):
+#   Domestic-Extra:
+#     type: http
+#     behavior: classical
+#     format: text
+#     url: https://raw.githubusercontent.com/levi-dev-bot/clash/refs/heads/main/Domestic-Extra.list
+#     path: ./rule_provider/domestic_extra.yaml
+#     interval: 86400
+#   rules(必须放在 RULE-SET,oc-cn-domain 之前):
+#     - RULE-SET,Domestic-Extra,国内,no-resolve
+# 实测依据(2026-10-28): samsclub 在 ChinaMax(12.3万条)/MetaCubeX(11万条) 均为 0 条;
+#   www.samsclub.cn 200 / www.samsclub.com 307 / samsclub.com.cn 000(仍收录,无害)。
+# 维护: 发现新遗漏站直接往「补充区」加 DOMAIN-SUFFIX 行并提交,设备侧 24h 内自动刷新。
+
+# ===== 山姆会员店(2026-10-28 补录,ChinaMax/MetaCubeX 均缺) =====
+DOMAIN-SUFFIX,samsclub.cn
+DOMAIN-SUFFIX,samsclub.com
+DOMAIN-SUFFIX,samsclub.com.cn
+DOMAIN-SUFFIX,samsclub-inc.com
+
+# ===== 比亚迪(上游已收录,显式保底防上游改版丢失) =====
+DOMAIN-SUFFIX,byd.com
+DOMAIN-SUFFIX,byd.auto
+DOMAIN-SUFFIX,bydauto.com
+DOMAIN-SUFFIX,bydauto.com.cn
+DOMAIN-SUFFIX,byd.com.cn
+DOMAIN-SUFFIX,bydglobal.com
+
+# ===== 其他日常站补漏(抽检 ChinaMax 已覆盖微信/淘宝/京东/支付宝/12306 等,暂不重复堆) =====
+# ↓↓↓ 在这条线以下补充新发现的遗漏站 ↓↓↓
