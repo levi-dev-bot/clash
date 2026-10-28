@@ -2,7 +2,7 @@
 # 格式: Clash / mihomo classical(DOMAIN-SUFFIX / DOMAIN / DOMAIN-KEYWORD)
 # 数据源: ai-core.list(手工核心,保底) + VPSDance/ai-proxy-rules(global 境外聚合)
 #         + Repcz/Tool(AI) 补充;国内 AI 服务商由 exclude-cn.list 剔除
-# 生成: 2026-10-28  共 318 条(核心 171 / L1 新增 131 / L2 新增 16)
+# 生成: 2026-10-29  共 318 条(核心 171 / L1 新增 131 / L2 新增 16)
 # 由 scripts/merge-ai.py 每日 04:00 自动生成,勿手改本文件;补条目请改 ai-core.list
 #
 # 用法一(subconverter / Clash-LIAN.ini): ruleset=AI,<本文件URL>
